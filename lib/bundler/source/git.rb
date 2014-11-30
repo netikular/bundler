@@ -20,7 +20,7 @@ module Bundler
         # Stringify options that could be set as symbols
         %w(ref branch tag revision).each{|k| options[k] = options[k].to_s if options[k] }
 
-        @uri        = options["uri"]
+        @uri        = options["uri"] || ''
         @branch     = options["branch"]
         @ref        = options["ref"] || options["branch"] || options["tag"] || 'master'
         @submodules = options["submodules"]
@@ -220,7 +220,7 @@ module Bundler
         @allow_remote || @allow_cached
       end
 
-    private
+      private
 
       def serialize_gemspecs_in(destination)
         expanded_path = destination.expand_path(Bundler.root)

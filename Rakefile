@@ -40,7 +40,7 @@ namespace :spec do
       deps.delete("rdiscount")
     end
 
-    deps.each do |name, version|
+    deps.sort_by{|name, _| name }.each do |name, version|
       sh "#{Gem.ruby} -S gem list -i '^#{name}$' -v '#{version}' || " \
          "#{Gem.ruby} -S gem install #{name} -v '#{version}' --no-ri --no-rdoc"
     end
@@ -112,7 +112,7 @@ begin
       rubyopt = ENV["RUBYOPT"]
       # When editing this list, also edit .travis.yml!
       branches = %w(master 2.2)
-      releases = %w(v1.3.6 v1.3.7 v1.4.2 v1.5.3 v1.6.2 v1.7.2 v1.8.29 v2.0.14 v2.1.11 v2.2.2 v2.3.0)
+      releases = %w(v1.3.6 v1.3.7 v1.4.2 v1.5.3 v1.6.2 v1.7.2 v1.8.29 v2.0.14 v2.1.11 v2.2.2 v2.4.4)
       (branches + releases).each do |rg|
         desc "Run specs with Rubygems #{rg}"
         RSpec::Core::RakeTask.new(rg) do |t|
@@ -127,7 +127,7 @@ begin
         end
 
         task "clone_rubygems_#{rg}" do
-          unless File.directory?("tmp/rubygems")
+          unless File.directory?(RUBYGEMS_REPO)
             system("git clone https://github.com/rubygems/rubygems.git tmp/rubygems")
           end
           hash = nil

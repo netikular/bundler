@@ -75,18 +75,25 @@ module Bundler
           ruby = Bundler.ruby_version
 
           agent = "bundler/#{Bundler::VERSION}"
-          agent += " rubygems/#{Gem::VERSION}"
-          agent += " ruby/#{ruby.version}"
-          agent += " (#{ruby.host})"
-          agent += " command/#{ARGV.first}"
+          agent << " rubygems/#{Gem::VERSION}"
+          agent << " ruby/#{ruby.version}"
+          agent << " (#{ruby.host})"
+          agent << " command/#{ARGV.first}"
 
           if ruby.engine != "ruby"
             # engine_version raises on unknown engines
             engine_version = ruby.engine_version rescue "???"
-            agent += " #{ruby.engine}/#{engine_version}"
+            agent << " #{ruby.engine}/#{engine_version}"
           end
+
           # add a random ID so we can consolidate runs server-side
           agent << " " << SecureRandom.hex(8)
+
+          # add any user agent strings set in the config
+          extra_ua = Bundler.settings[:user_agent]
+          agent << " " << extra_ua if extra_ua
+
+          agent
         end
       end
 
@@ -229,6 +236,12 @@ module Bundler
     end
 
     def use_api
+      _use_api(true)
+    rescue AuthenticationRequiredError
+      retry_with_auth{_use_api(false)}
+    end
+
+    def _use_api(reraise_auth_error = false)
       return @use_api if defined?(@use_api)
 
       if @remote_uri.scheme == "file" || Bundler::Fetcher.disable_endpoint
@@ -238,6 +251,9 @@ module Bundler
       end
     rescue NetworkDownError => e
       raise HTTPError, e.message
+    rescue AuthenticationRequiredError => e
+      raise e if reraise_auth_error
+      false
     rescue HTTPError
       @use_api = false
     end
@@ -282,6 +298,8 @@ module Bundler
         response.body
       when Net::HTTPRequestEntityTooLarge
         raise FallbackError, response.body
+      when Net::HTTPUnauthorized, Net::HTTPForbidden
+        raise AuthenticationRequiredError, "#{response.class}: #{response.body}"
       else
         raise HTTPError, "#{response.class}: #{response.body}"
       end

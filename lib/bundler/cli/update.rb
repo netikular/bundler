@@ -7,10 +7,10 @@ module Bundler
     end
 
     def run
+      Bundler.ui.level = "error" if options[:quiet]
 
       sources = Array(options[:source])
       groups  = Array(options[:group]).map(&:to_sym)
-      Bundler.ui.level = "warn" if options[:quiet]
 
       if gems.empty? && sources.empty? && groups.empty?
         # We're doing a full update
@@ -56,7 +56,7 @@ module Bundler
         Bundler::CLI::Clean.new(options).run
       end
 
-      Bundler.ui.confirm "Your bundle is updated!"
+      Bundler.ui.confirm "Bundle updated!"
       without_groups_messages
     end
 

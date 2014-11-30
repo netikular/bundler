@@ -6,6 +6,8 @@ module Bundler
     end
 
     def run
+      Bundler.ui.level = "error" if options[:quiet]
+
       warn_if_root
 
       if options[:without]
@@ -67,7 +69,6 @@ module Bundler
       Bundler.settings[:no_install] = true if options["no-install"]
       Bundler.settings[:clean]    = options["clean"] if options["clean"]
       Bundler.settings.without    = options[:without]
-      Bundler.ui.level            = "warn" if options[:quiet]
       Bundler::Fetcher.disable_endpoint = options["full-index"]
       Bundler.settings[:disable_shared_gems] = Bundler.settings[:path] ? '1' : nil
 
@@ -79,21 +80,22 @@ module Bundler
       Installer.install(Bundler.root, definition, options)
       Bundler.load.cache if Bundler.root.join("vendor/cache").exist? && !options["no-cache"] && !Bundler.settings[:frozen]
 
+      Bundler.ui.confirm "Bundle complete! #{dependencies_count_for(definition)}, #{gems_installed_for(definition)}."
+      confirm_without_groups
+
       if Bundler.settings[:path]
         absolute_path = File.expand_path(Bundler.settings[:path])
         relative_path = absolute_path.sub(File.expand_path('.'), '.')
-        Bundler.ui.confirm "Your bundle is complete!"
-        without_groups_messages
-        Bundler.ui.confirm "It was installed into #{relative_path}"
+        Bundler.ui.confirm "Bundled gems are installed into #{relative_path}."
       else
-        Bundler.ui.confirm "Your bundle is complete!"
-        without_groups_messages
         Bundler.ui.confirm "Use `bundle show [gemname]` to see where a bundled gem is installed."
       end
+
       Installer.post_install_messages.to_a.each do |name, msg|
         Bundler.ui.confirm "Post-install message from #{name}:"
         Bundler.ui.info msg
       end
+
       Installer.ambiguous_gems.to_a.each do |name, installed_from_uri, *also_found_in_uris|
         Bundler.ui.error "Warning: the gem '#{name}' was found in multiple sources."
         Bundler.ui.error "Installed from: #{installed_from_uri}"
@@ -132,11 +134,22 @@ module Bundler
         "application for all non-root users on this machine.", :wrap => true
     end
 
-    def without_groups_messages
+    def confirm_without_groups
       if Bundler.settings.without.any?
         require "bundler/cli/common"
         Bundler.ui.confirm Bundler::CLI::Common.without_groups_message
       end
     end
+
+    def dependencies_count_for(definition)
+      count = definition.dependencies.count
+      "#{count} Gemfile #{count == 1 ? 'dependency' : 'dependencies'}"
+    end
+
+    def gems_installed_for(definition)
+      count = definition.specs.count
+      "#{count} #{count == 1 ? 'gem' : 'gems'} now installed"
+    end
+
   end
 end

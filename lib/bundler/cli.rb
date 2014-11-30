@@ -11,6 +11,8 @@ module Bundler
     rescue Exception => e
       Bundler.ui = UI::Shell.new
       raise e
+    ensure
+      Bundler.cleanup
     end
 
     def initialize(*args)
@@ -184,6 +186,8 @@ module Bundler
     D
     method_option "paths", :type => :boolean,
       :banner => "List the paths of all gems that are required by your Gemfile."
+    method_option "outdated", :type => :boolean,
+      :banner => "Show verbose output including whether gems are outdated."
     def show(gem_name = nil)
       require 'bundler/cli/show'
       Show.new(options, gem_name).run

@@ -211,6 +211,11 @@ module Bundler
       @tmp.join(name)
     end
 
+    def cleanup
+      FileUtils.remove_entry_secure(@tmp) if @tmp
+    rescue
+    end
+
     def settings
       @settings ||= begin
         Settings.new(app_config_path)

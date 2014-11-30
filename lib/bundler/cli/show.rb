@@ -2,10 +2,12 @@ require 'bundler/cli/common'
 
 module Bundler
   class CLI::Show
-    attr_reader :options, :gem_name
+    attr_reader :options, :gem_name, :latest_specs
     def initialize(options, gem_name)
       @options = options
       @gem_name = gem_name
+      @verbose = options[:verbose] || options[:outdated]
+      @latest_specs = fetch_latest_specs if @verbose
     end
 
     def run
@@ -36,13 +38,37 @@ module Bundler
         Bundler.ui.info "Gems included by the bundle:"
         Bundler.load.specs.sort_by { |s| s.name }.each do |s|
           desc = "  * #{s.name} (#{s.version}#{s.scm_version})"
-          if @options[:verbose]
-            Bundler.ui.info "#{desc} - #{s.summary || 'No description available.'}"
+          if @verbose
+            latest = latest_specs.find { |l| l.name == s.name }
+            Bundler.ui.info <<-END.gsub(/^ +/, '')
+              #{desc}
+              \tSummary:  #{s.summary || 'No description available.'}
+              \tHomepage: #{s.homepage || 'No website available.'}
+              \tStatus:   #{outdated?(s, latest) ? "Outdated - #{s.version} < #{latest.version}" : "Up to date"}
+            END
           else
             Bundler.ui.info desc
           end
         end
       end
+    end
+
+    private
+
+    def fetch_latest_specs
+      definition = Bundler.definition(true)
+      if options[:outdated]
+        Bundler.ui.info "Fetching remote specs for outdated check...\n\n"
+        Bundler.ui.silence { definition.resolve_remotely! }
+      else
+        definition.resolve_with_cache!
+      end
+      definition.specs
+    end
+
+    def outdated?(current, latest)
+      return false unless latest
+      Gem::Version.new(current.version) < Gem::Version.new(latest.version)
     end
   end
 end
